@@ -1,0 +1,3 @@
+simulator/.venv/
+__pycache__/
+*.exe
