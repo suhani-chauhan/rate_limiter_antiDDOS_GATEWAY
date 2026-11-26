@@ -53,12 +53,14 @@ async function seed() {
     );
   }
 }
-seed();
-setInterval(seed, 10000);
+if (process.env.SEED_REDIS === "1") {
+  seed();
+  setInterval(seed, 10000);
+}
 
 const app = express();
 app.get("/metrics", async (_req, res) => {
   res.set("Content-Type", client.register.contentType);
   res.end(await client.register.metrics());
 });
-app.listen(8080, () => console.log("mock gateway metrics on :8080/metrics"));
+app.listen(8090, () => console.log("mock gateway metrics on :8090/metrics"));

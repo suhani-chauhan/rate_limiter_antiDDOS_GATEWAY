@@ -43,8 +43,9 @@ function StatCard({ label, value, tone }) {
   );
 }
 
+// Real detector scores run about 0.5 to 0.78, so thresholds sit in that range
 function ScoreBar({ score }) {
-  const level = score >= 0.85 ? "high" : score >= 0.7 ? "mid" : "low";
+  const level = score >= 0.7 ? "high" : score >= 0.6 ? "mid" : "low";
   return (
     <div className="scorebar">
       <div className={`scorefill ${level}`} style={{ width: `${Math.round(score * 100)}%` }} />
@@ -66,6 +67,8 @@ export default function App() {
   const alerts = useApi("/api/alerts");
 
   const s = summary.data;
+  const list = suspicious.data?.items || [];
+  const total = suspicious.data?.total ?? 0;
   const anyError = summary.error || series.error || suspicious.error;
 
   return (
@@ -121,14 +124,17 @@ export default function App() {
       </section>
 
       <section className="panel">
-        <h2>Suspicious IPs <span className="count">{suspicious.data?.length ?? 0}</span></h2>
+        <h2>Suspicious IPs <span className="count">{total}</span></h2>
+        <p className="sub" style={{ marginBottom: 10 }}>
+          Showing top {list.length} of {total} flagged IPs, highest score first
+        </p>
         <div className="tablewrap">
           <table>
             <thead>
               <tr><th>IP</th><th>Score</th><th>Reason</th><th>Detected</th><th>Block expires in</th></tr>
             </thead>
             <tbody>
-              {(suspicious.data || []).map((r) => (
+              {list.map((r) => (
                 <tr key={r.ip}>
                   <td className="mono">{r.ip}</td>
                   <td><ScoreBar score={r.score} /></td>
@@ -137,7 +143,7 @@ export default function App() {
                   <td>{ttlText(r.ttl)}</td>
                 </tr>
               ))}
-              {suspicious.data?.length === 0 && (
+              {suspicious.data && list.length === 0 && (
                 <tr><td colSpan="5" className="empty">No suspicious IPs right now</td></tr>
               )}
             </tbody>

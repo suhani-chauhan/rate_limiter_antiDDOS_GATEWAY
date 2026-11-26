@@ -58,20 +58,30 @@ app.get("/api/timeseries", async (req, res) => {
 // Suspicious IPs from Part B's Redis output
 app.get("/api/suspicious", async (_req, res) => {
   try {
+    const total = await redis.zcard("suspicious:ips");
     const raw = await redis.zrevrange("suspicious:ips", 0, 49, "WITHSCORES");
-    const out = [];
-    for (let i = 0; i < raw.length; i += 2) {
-      const ip = raw[i];
-      const meta = JSON.parse((await redis.get(`blocked:ip:${ip}`)) || "{}");
-      out.push({
-        ip, score: +raw[i + 1],
-        reason: meta.reason || "", detected_at: meta.detected_at || null,
-        ttl: await redis.ttl(`blocked:ip:${ip}`),
+    const ips = [], scores = [];
+    for (let i = 0; i < raw.length; i += 2) { ips.push(raw[i]); scores.push(+raw[i + 1]); }
+
+    const pipe = redis.pipeline();
+    ips.forEach((ip) => { pipe.get(`blocked:ip:${ip}`); pipe.ttl(`blocked:ip:${ip}`); });
+    const results = ips.length ? await pipe.exec() : [];
+
+    const items = [];
+    ips.forEach((ip, i) => {
+      const ttl = results[i * 2 + 1][1];
+      if (ttl === -2) return; // key expired: hide stale IP
+      let meta = {};
+      try { meta = JSON.parse(results[i * 2][1] || "{}"); } catch {}
+      items.push({
+        ip, score: scores[i],
+        reason: meta.reason || "", detected_at: meta.detected_at || null, ttl,
       });
-    }
-    res.json(out);
+    });
+    res.json({ total, items });
   } catch (e) { res.status(502).json({ error: e.message }); }
 });
+
 app.get("/api/alerts", async (_req, res) => {
   try {
     const r = await fetch(`${PROM}/api/v1/alerts`);
