@@ -1,0 +1,29 @@
+groups:
+  - name: gateway
+    rules:
+      - alert: HighBlockRatio
+        expr: |
+          sum(rate(gateway_requests_total{decision=~"rate_limited|blocked"}[1m]))
+            / sum(rate(gateway_requests_total[1m])) > 0.5
+        for: 30s
+        labels: { severity: warning }
+        annotations:
+          summary: "More than 50% of traffic is being limited or blocked"
+      - alert: TrafficSpike
+        expr: sum(rate(gateway_requests_total[30s])) > 3 * sum(rate(gateway_requests_total[30s] offset 5m))
+        for: 20s
+        labels: { severity: warning }
+        annotations:
+          summary: "Request rate is over 3x the level from 5 minutes ago"
+      - alert: GatewayDown
+        expr: up{job="gateway"} == 0
+        for: 15s
+        labels: { severity: critical }
+        annotations:
+          summary: "Gateway metrics endpoint is unreachable"
+      - alert: HighP95Latency
+        expr: histogram_quantile(0.95, sum by (le)(rate(gateway_request_duration_seconds_bucket[1m]))) > 0.15
+        for: 30s
+        labels: { severity: warning }
+        annotations:
+          summary: "p95 latency is above 150 ms"

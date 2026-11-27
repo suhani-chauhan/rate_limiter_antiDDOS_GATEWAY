@@ -1,0 +1,14 @@
+{
+  "name": "dashboard-server",
+  "version": "1.0.0",
+  "scripts": {
+    "mock": "node mock-gateway.js",
+    "api": "node api.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "ioredis": "^5.4.1",
+    "prom-client": "^15.1.3"
+  }
+}
